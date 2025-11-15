@@ -578,6 +578,12 @@
       <div class="label">Where should we look?</div>
       <input id="location" placeholder="e.g. San Jose State University, 95112" />
 
+      <div class="label">Mode</div>
+      <select id="orderMode" style="margin-top:6px; width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background: var(--bg-grey); font-size:13px;">
+        <option value="single">Single order (1 best match)</option>
+        <option value="batch">Batch for group / event (multiple spots)</option>
+      </select>
+
       <button class="btn-primary" id="runBtn" onclick="runAgent()">
         <span class="btn-icon"></span>
         <span>Run Delivry Agent</span>
@@ -678,6 +684,7 @@
   const runBtn = document.getElementById("runBtn");
   const refreshBtn = document.getElementById("refreshBtn");
   const resultArea = document.getElementById("resultArea");
+  const orderMode = document.getElementById("orderMode");
   const steps = Array.from(document.querySelectorAll(".step"));
   const progressBar = document.getElementById("progressBar");
   const timelineStatus = document.getElementById("timelineStatus");
@@ -713,6 +720,7 @@
   async function runAgent() {
     const prompt = document.getElementById("prompt").value.trim();
     const location = document.getElementById("location").value.trim();
+    const mode = orderMode.value;
 
     if (!prompt || !location) {
       alert("Please enter both what you want and where we should look.");
@@ -726,7 +734,12 @@
       dietary_rules: rules
     };
     usedPlaceIds = [];
-    await fetchRecommendation();
+
+    if (mode === "batch") {
+      await fetchBatchOrder();
+    } else {
+      await fetchRecommendation();
+    }
   }
 
   async function fetchRecommendation() {
@@ -813,8 +826,109 @@
     runBtn.disabled = false;
     refreshBtn.disabled = !o.place_id;
   }
+  
+  async function fetchBatchOrder() {
+    if (!lastBaseRequest) return;
 
-  refreshBtn.addEventListener("click", fetchRecommendation);
+    runBtn.disabled = true;
+    refreshBtn.disabled = true;
+    resultArea.innerHTML = "";
+    animateTimeline();
+
+    const requestBody = {
+      ...lastBaseRequest,
+      num_restaurants: 3,      // how many different spots to get back
+      exclude_place_ids: []    // refresh not used in batch mode (for now)
+    };
+
+    let payload;
+    try {
+      const res = await fetch("http://localhost:8000/api/batch_order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+      payload = await res.json();
+    } catch (err) {
+      console.error(err);
+      payload = {
+        status: "error",
+        error: "Network or server error. Please check if the backend is running."
+      };
+    }
+
+    // Finish timeline visually
+    steps.forEach(s => s.classList.add("active"));
+    progressBar.style.width = "100%";
+    timelineStatus.textContent = payload.status === "ok" ? "Completed" : "Failed";
+
+    if (payload.status !== "ok") {
+      resultArea.innerHTML = `<div class="error">${payload.error || "The agent could not complete this run."}</div>`;
+      runBtn.disabled = false;
+      refreshBtn.disabled = true;
+      return;
+    }
+
+    const restaurants = (payload.data && payload.data.restaurants) || [];
+    if (!restaurants.length) {
+      resultArea.innerHTML = `<div class="error">No restaurants returned for this batch.</div>`;
+      runBtn.disabled = false;
+      refreshBtn.disabled = true;
+      return;
+    }
+
+    // Render MULTIPLE cards, one per restaurant, using same visual style
+    resultArea.innerHTML = restaurants.map(o => `
+      <div class="result-card" style="margin-bottom:12px;">
+        <div class="result-top">
+          <div class="result-name">${o.restaurant_name || "Selected restaurant"}</div>
+          <div class="pill">${o.platform || "Platform"}</div>
+        </div>
+
+        <div class="result-grid">
+          <div>
+            <div class="label-small">Item</div>
+            <div class="value">${o.drink_name || "N/A"}</div>
+          </div>
+          <div>
+            <div class="label-small">Estimated total</div>
+            <div class="value">${o.total_price ? "$" + o.total_price : "N/A"}</div>
+          </div>
+          <div>
+            <div class="label-small">ETA</div>
+            <div class="value">${o.eta_minutes ? o.eta_minutes + " min" : "N/A"}</div>
+          </div>
+          <div>
+            <div class="label-small">Address</div>
+            <div class="value">${o.restaurant_address || "N/A"}</div>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          ${
+            o.checkout_url
+              ? `<a href="${o.checkout_url}" target="_blank" style="flex:1;">
+                   <button class="btn-primary" style="width:100%; margin-top:8px;">
+                     Review & checkout
+                   </button>
+                 </a>`
+              : ""
+          }
+        </div>
+      </div>
+    `).join("");
+
+    runBtn.disabled = false;
+    // In batch mode, refresh doesn't make sense (we got multiple options already)
+    refreshBtn.disabled = true;
+  }
+
+  refreshBtn.addEventListener("click", () => {
+    if (!lastBaseRequest) return;
+    // Force mode to single for safety
+    orderMode.value = "single";
+    fetchRecommendation();
+  });
 </script>
 
 </body>
