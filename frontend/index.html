@@ -10,34 +10,48 @@
     :root {
       --green: #10B981;
       --green-light: #34D399;
-      --green-muted: #D1FAE5;
+      --green-soft: #ECFDF5;
+      --green-muted: #A7F3D0;
       --text-dark: #0F172A;
-      --text-light: #475569;
+      --text-light: #64748B;
       --border: #E2E8F0;
       --bg-grey: #F8FAFC;
       --white: #FFFFFF;
     }
 
     * {
-      margin: 0; padding: 0; box-sizing: border-box;
-      font-family: "Inter", sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     body {
-      background: #FFFFFF;
+      background: radial-gradient(circle at top, #F9FAFB 0, #FFFFFF 40%, #F1F5F9 100%);
       color: var(--text-dark);
       min-height: 100vh;
+    }
+
+    /* Simple fade-in for page */
+    body {
+      opacity: 0;
+      animation: fadeInBody 0.4s ease-out forwards;
+    }
+
+    @keyframes fadeInBody {
+      to { opacity: 1; }
     }
 
     /* NAVBAR */
     .navbar {
       width: 100%;
-      padding: 16px 34px;
+      padding: 14px 34px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--white);
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(10px);
       position: sticky;
       top: 0;
       z-index: 100;
@@ -54,14 +68,40 @@
     }
 
     .brand-logo {
-      width: 20px; height: 20px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
-      background: var(--green-light);
-      box-shadow: 0 0 6px rgba(16,185,129,0.6);
+      background: radial-gradient(circle at 30% 20%, #FFFFFF, var(--green));
+      box-shadow: 0 0 10px rgba(16,185,129,0.6);
+      animation: logoPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes logoPulse {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    .nav-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--bg-grey);
+      border: 1px solid #E5E7EB;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-light);
     }
 
     .logout-btn {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--green);
       cursor: pointer;
       border: none;
@@ -69,42 +109,156 @@
       font-weight: 600;
     }
 
-    /* GRID LAYOUT */
-    .container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-      padding: 40px;
-    }
-    @media (max-width: 900px) {
-      .container { grid-template-columns: 1fr; padding: 20px; }
+    /* MAIN LAYOUT */
+    .page {
+      padding: 26px 40px 34px;
     }
 
-    /* PANELS */
-    .panel {
+    @media (max-width: 900px) {
+      .page { padding: 20px; }
+    }
+
+    .top-row {
+      display: grid;
+      grid-template-columns: 2fr 1.3fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .top-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
       background: var(--white);
       border-radius: 18px;
       border: 1px solid var(--border);
-      padding: 26px 28px;
-      box-shadow: 0 5px 18px rgba(0,0,0,0.05);
+      box-shadow: 0 8px 24px rgba(148,163,184,0.12);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
     }
 
-    .title {
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at top left, rgba(52,211,153,0.14), transparent 55%);
+      opacity: 0.7;
+    }
+
+    .card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-title {
       font-size: 26px;
       font-weight: 800;
       margin-bottom: 6px;
     }
 
-    .subtitle {
-      font-size: 15px;
+    .hero-highlight {
+      color: var(--green);
+    }
+
+    .hero-subtitle {
+      font-size: 14px;
       color: var(--text-light);
-      margin-bottom: 22px;
-      max-width: 500px;
+      margin-bottom: 18px;
+      max-width: 520px;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tag {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--green-muted);
+      background: var(--green-soft);
+      color: #047857;
+      font-weight: 500;
+    }
+
+    .profile-strip {
+      margin-top: 6px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    .profile-strip span.label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    /* RIGHT PROFILE CARD */
+    .profile-card-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-dark);
+    }
+
+    .profile-item {
+      font-size: 13px;
+      color: var(--text-light);
+      margin-bottom: 5px;
+    }
+
+    .badge-safe {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: #047857;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(16,185,129,0.7);
+    }
+
+    /* GRID: FORM + TIMELINE */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1.2fr 1.1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .bottom-row { grid-template-columns: 1fr; }
     }
 
     .label {
       font-size: 13px;
-      margin-top: 10px;
+      margin-top: 8px;
       font-weight: 600;
       color: var(--text-light);
     }
@@ -112,78 +266,158 @@
     textarea, input {
       width: 100%;
       margin-top: 6px;
-      padding: 12px 14px;
-      font-size: 15px;
+      padding: 11px 13px;
+      font-size: 14px;
       border-radius: 12px;
       border: 1px solid var(--border);
       background: var(--bg-grey);
-      transition: border 0.15s ease, background 0.15s ease;
+      transition: border 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
     }
 
     textarea:focus, input:focus {
       background: var(--white);
       border-color: var(--green);
-      box-shadow: 0 0 0 2px rgba(16,185,129,0.15);
+      box-shadow: 0 0 0 2px rgba(16,185,129,0.16);
       outline: none;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
     }
 
     .btn-primary {
       width: 100%;
-      background: var(--green);
-      margin-top: 20px;
-      padding: 14px;
+      background: linear-gradient(135deg, var(--green), var(--green-light));
+      margin-top: 18px;
+      padding: 13px;
       border-radius: 12px;
       border: none;
       color: var(--white);
       font-weight: 600;
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
-      transition: background 0.15s ease, transform 0.1s ease;
+      transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
     }
+
     .btn-primary:hover {
-      background: var(--green-light);
-      transform: translateY(-2px);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(16,185,129,0.45);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.7;
+      cursor: default;
+      box-shadow: none;
     }
 
     .btn-secondary {
       width: 100%;
-      margin-top: 10px;
-      background: var(--green-muted);
+      margin-top: 8px;
+      background: #E5F9F1;
       border: 1px solid var(--green-light);
       padding: 10px;
-      color: var(--green);
+      color: #047857;
       cursor: pointer;
       border-radius: 10px;
       font-weight: 600;
+      font-size: 14px;
       transition: background 0.15s ease;
     }
-    .btn-secondary:hover {
-      background: #A7F3D0;
+
+    .btn-secondary:hover:enabled {
+      background: var(--green-muted);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .btn-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 2px solid #FFFFFF;
+      background: rgba(16,185,129,0.8);
     }
 
     /* TIMELINE */
+    .timeline-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .timeline-heading {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .timeline-status {
+      font-size: 12px;
+      color: var(--text-light);
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      height: 6px;
+      background: #E5E7EB;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--green), var(--green-light));
+      transition: width 0.25s ease;
+    }
+
     .timeline {
-      border-left: 3px solid var(--green);
-      margin-top: 10px;
-      padding-left: 18px;
+      border-left: 2px solid #E5E7EB;
+      padding-left: 16px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
+      margin-bottom: 18px;
     }
 
     .step {
+      position: relative;
       opacity: 0.4;
-      transition: opacity 0.15s ease, transform 0.25s ease;
-      display: flex;
-      flex-direction: column;
+      transform: translateX(0);
+      transition: opacity 0.2s ease, transform 0.2s ease;
     }
 
     .step.active {
       opacity: 1;
-      transform: translateX(6px);
+      transform: translateX(4px);
+    }
+
+    .step-dot {
+      position: absolute;
+      left: -20px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #CBD5F5;
+    }
+
+    .step.active .step-dot {
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(16,185,129,0.8);
     }
 
     .step-title {
+      font-size: 14px;
       font-weight: 600;
     }
 
@@ -192,46 +426,67 @@
       color: var(--text-light);
     }
 
-    /* RESULTS */
-    .result-card {
-      border-radius: 16px;
-      padding: 20px;
-      border: 1px solid var(--green-light);
-      background: #ECFDF5;
-      margin-top: 20px;
+    /* RESULT */
+    .result-header-label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
     }
 
-    .result-header {
+    .result-card {
+      border-radius: 16px;
+      padding: 18px 18px 16px;
+      border: 1px solid var(--green-light);
+      background: var(--green-soft);
+      box-shadow: 0 10px 30px rgba(16,185,129,0.25);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(8px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .result-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
+      gap: 12px;
+      margin-bottom: 10px;
     }
 
     .result-name {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       color: var(--text-dark);
     }
 
     .pill {
-      font-size: 12px;
-      padding: 6px 12px;
+      font-size: 11px;
+      padding: 6px 10px;
       border-radius: 999px;
       background: var(--green);
-      color: white;
+      color: #FFFFFF;
       font-weight: 600;
     }
 
     .result-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px 20px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 18px;
       font-size: 14px;
     }
 
     @media (max-width: 600px) {
-      .result-grid { grid-template-columns: 1fr; }
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .label-small {
@@ -241,6 +496,13 @@
 
     .value {
       font-weight: 600;
+    }
+
+    .result-actions {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .error {
@@ -253,6 +515,13 @@
       font-size: 14px;
     }
 
+    .trust-note {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 16px;
+      border-top: 1px dashed #E5E7EB;
+      padding-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -263,98 +532,186 @@
     <div class="brand-logo"></div>
     DELIVRY
   </div>
-  <button class="logout-btn" onclick="logout()">Sign out</button>
+  <div class="nav-right">
+    <div class="nav-pill">Allergy-aware • Privacy-first</div>
+    <button class="logout-btn" onclick="logout()">Sign out</button>
+  </div>
 </header>
 
-<!-- MAIN GRID -->
-<div class="container">
+<div class="page">
 
-  <!-- LEFT PANEL -->
-  <section class="panel">
-    <div class="title">AI-Powered Food Ordering</div>
-    <div class="subtitle">
-      Describe what you're craving and your budget.  
-      Delivry finds the safest, closest, allergy-friendly pick — and prepares checkout instantly.
-    </div>
-
-    <div class="label">Your request</div>
-    <textarea id="prompt" rows="3" placeholder="Find me an iced matcha under $10 near SJSU..."></textarea>
-
-    <div class="label">Your location</div>
-    <input id="location" placeholder="Enter a location (e.g. San Jose State University)" />
-
-    <button class="btn-primary" onclick="runAgent()">Find Restaurants</button>
-    <button class="btn-secondary" id="refreshBtn" disabled>Show another option</button>
-  </section>
-
-  <!-- RIGHT PANEL -->
-  <section class="panel">
-    <div class="label">Agent Timeline</div>
-
-    <div class="timeline" id="timeline">
-      <div class="step" data-step="1">
-        <div class="step-title">Understand request</div>
-        <div class="step-sub">Parsing drink, budget, and dietary restrictions.</div>
+  <!-- TOP ROW: Hero + Profile -->
+  <div class="top-row">
+    <section class="card">
+      <div class="hero-title">
+        Safer food ordering, <span class="hero-highlight">in one prompt.</span>
+      </div>
+      <div class="hero-subtitle">
+        Tell Delivry what you want, your budget, and timing.  
+        We scan nearby cafés, filter based on your allergies and rules, and return a checkout-ready option that actually fits you.
       </div>
 
-      <div class="step" data-step="2">
-        <div class="step-title">Search cafés</div>
-        <div class="step-sub">Finding nearby options within your radius.</div>
+      <div class="hero-tags">
+        <div class="tag">Allergy-aware AI</div>
+        <div class="tag">No payment processed</div>
+        <div class="tag">Transparent ranking</div>
       </div>
 
-      <div class="step" data-step="3">
-        <div class="step-title">Filter unsafe items</div>
-        <div class="step-sub">Removing anything conflicting with allergies.</div>
+      <div class="profile-strip" id="profileStrip">
+        <!-- Filled by JS -->
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="profile-card-title">Your profile at a glance</div>
+      <div id="profileDetails"></div>
+      <div class="badge-safe">
+        <span class="badge-dot"></span>
+        We never suggest anything that matches your allergies.
+      </div>
+    </section>
+  </div>
+
+  <!-- BOTTOM ROW: Form + Timeline/Results -->
+  <div class="bottom-row">
+    <!-- LEFT: INPUT FORM -->
+    <section class="card">
+      <div class="label">What would you like today?</div>
+      <textarea id="prompt" placeholder="Example: Find me an iced matcha with oat milk under $12, within 30 minutes, near San Jose State University."></textarea>
+
+      <div class="label">Where should we look?</div>
+      <input id="location" placeholder="e.g. San Jose State University, 95112" />
+
+      <button class="btn-primary" id="runBtn" onclick="runAgent()">
+        <span class="btn-icon"></span>
+        <span>Run Delivry Agent</span>
+      </button>
+
+      <button class="btn-secondary" id="refreshBtn" disabled>
+        Show another option
+      </button>
+    </section>
+
+    <!-- RIGHT: TIMELINE + RESULT -->
+    <section class="card">
+      <div class="timeline-title-row">
+        <div class="timeline-heading">Agent timeline</div>
+        <div class="timeline-status" id="timelineStatus">Idle</div>
       </div>
 
-      <div class="step" data-step="4">
-        <div class="step-title">Compare options</div>
-        <div class="step-sub">Balancing price, ratings, distance, ETA.</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBar"></div>
       </div>
 
-      <div class="step" data-step="5">
-        <div class="step-title">Prepare checkout</div>
-        <div class="step-sub">Returning a ready-to-order result.</div>
+      <div class="timeline" id="timeline">
+        <div class="step" data-step="1">
+          <div class="step-dot"></div>
+          <div class="step-title">Understand request</div>
+          <div class="step-sub">Parse drink, budget, time window, and dietary rules.</div>
+        </div>
+        <div class="step" data-step="2">
+          <div class="step-dot"></div>
+          <div class="step-title">Search cafés</div>
+          <div class="step-sub">Find nearby options around your location.</div>
+        </div>
+        <div class="step" data-step="3">
+          <div class="step-dot"></div>
+          <div class="step-title">Filter unsafe items</div>
+          <div class="step-sub">Drop anything that conflicts with allergies or rules.</div>
+        </div>
+        <div class="step" data-step="4">
+          <div class="step-dot"></div>
+          <div class="step-title">Compare & score</div>
+          <div class="step-sub">Balance price, ETA, distance, ratings, and fit.</div>
+        </div>
+        <div class="step" data-step="5">
+          <div class="step-dot"></div>
+          <div class="step-title">Prepare checkout</div>
+          <div class="step-sub">Return a ready-to-click checkout path.</div>
+        </div>
       </div>
-    </div>
 
-    <div id="resultArea"></div>
-  </section>
+      <div class="result-header-label">Result</div>
+      <div id="resultArea"></div>
+
+      <div class="trust-note">
+        Delivry does not handle payment. We simply automate the “finding and configuring” step  
+        so you can review the cart and pay directly with the provider you trust.
+      </div>
+    </section>
+  </div>
 </div>
 
-
 <script>
-
-  // Load user
+  // ---------- USER + PROFILE ----------
   const stored = localStorage.getItem("delivry_user");
-  if (!stored) window.location.href = "signup.html";
+  if (!stored) {
+    window.location.href = "signup.html";
+  }
   const user = JSON.parse(stored);
 
-  const resultArea = document.getElementById("resultArea");
-  const refreshBtn = document.getElementById("refreshBtn");
+  const profileStrip = document.getElementById("profileStrip");
+  const profileDetails = document.getElementById("profileDetails");
 
-  let usedPlaceIds = [];
-  let lastBaseRequest = null;
+  const allergies = user.allergies || [];
+  const rules = user.customRestrictions || [];
+
+  profileStrip.innerHTML = `
+    <div>
+      <span class="label">Signed in as</span><br/>
+      ${user.name} &nbsp;<span style="color:#6B7280;">(${user.email || "no email set"})</span>
+    </div>
+    <div>
+      <span class="label">Allergies</span><br/>
+      ${allergies.length ? allergies.join(", ") : "None added"}
+    </div>
+  `;
+
+  profileDetails.innerHTML = `
+    <div class="profile-item"><strong>Name:</strong> ${user.name}</div>
+    <div class="profile-item"><strong>Allergies:</strong> ${allergies.length ? allergies.join(", ") : "None"}</div>
+    <div class="profile-item"><strong>Dietary rules:</strong> ${rules.length ? rules.join("; ") : "None set"}</div>
+  `;
 
   function logout() {
     localStorage.clear();
     window.location.href = "login.html";
   }
 
-  function animateTimeline() {
-    const steps = document.querySelectorAll(".step");
-    steps.forEach(s => s.classList.remove("active"));
+  // ---------- TIMELINE + STATE ----------
+  const runBtn = document.getElementById("runBtn");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const resultArea = document.getElementById("resultArea");
+  const steps = Array.from(document.querySelectorAll(".step"));
+  const progressBar = document.getElementById("progressBar");
+  const timelineStatus = document.getElementById("timelineStatus");
 
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i >= steps.length) {
-        clearInterval(interval);
+  let usedPlaceIds = [];
+  let lastBaseRequest = null;
+  let timelineInterval = null;
+
+  function resetTimeline() {
+    steps.forEach(s => s.classList.remove("active"));
+    progressBar.style.width = "0%";
+    timelineStatus.textContent = "Running…";
+  }
+
+  function animateTimeline() {
+    resetTimeline();
+    let index = 0;
+    const total = steps.length;
+    if (timelineInterval) clearInterval(timelineInterval);
+    timelineInterval = setInterval(() => {
+      if (index >= total) {
+        clearInterval(timelineInterval);
+        timelineStatus.textContent = "Completed";
         return;
       }
-      steps[i].classList.add("active");
-      i++;
-    }, 400);
-    return interval;
+      steps[index].classList.add("active");
+      const pct = ((index + 1) / total) * 100;
+      progressBar.style.width = pct + "%";
+      index++;
+    }, 450);
   }
 
   async function runAgent() {
@@ -362,96 +719,106 @@
     const location = document.getElementById("location").value.trim();
 
     if (!prompt || !location) {
-      alert("Please enter both a request and a location.");
+      alert("Please enter both what you want and where we should look.");
       return;
     }
-
-    resultArea.innerHTML = "";
-    refreshBtn.disabled = true;
 
     lastBaseRequest = {
       prompt,
       location,
-      allergies: user.allergies,
-      dietary_rules: user.customRestrictions
+      allergies,
+      dietary_rules: rules
     };
     usedPlaceIds = [];
-
     await fetchRecommendation();
   }
 
   async function fetchRecommendation() {
     if (!lastBaseRequest) return;
 
-    const anim = animateTimeline();
-    const body = {
+    runBtn.disabled = true;
+    refreshBtn.disabled = true;
+    resultArea.innerHTML = "";
+    animateTimeline();
+
+    const requestBody = {
       ...lastBaseRequest,
       exclude_place_ids: usedPlaceIds
     };
 
     let payload;
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/order", {
+      const res = await fetch("http://localhost:8000/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        body: JSON.stringify(requestBody)
       });
       payload = await res.json();
     } catch (err) {
-      payload = { status: "error", error: "Network or server error." };
+      console.error(err);
+      payload = { status: "error", error: "Network or server error. Please check if the backend is running." };
     }
 
-    clearInterval(anim);
-    document.querySelectorAll(".step").forEach(s => s.classList.add("active"));
+    // Ensure timeline finishes visually
+    steps.forEach(s => s.classList.add("active"));
+    progressBar.style.width = "100%";
+    timelineStatus.textContent = payload.status === "ok" ? "Completed" : "Failed";
 
     if (payload.status !== "ok") {
-      resultArea.innerHTML = `<div class="error">${payload.error}</div>`;
+      resultArea.innerHTML = `<div class="error">${payload.error || "The agent could not complete this run."}</div>`;
+      runBtn.disabled = false;
+      refreshBtn.disabled = true;
       return;
     }
 
     const o = payload.data;
-
     if (o.place_id) usedPlaceIds.push(o.place_id);
 
     resultArea.innerHTML = `
       <div class="result-card">
-        <div class="result-header">
-          <div class="result-name">${o.restaurant_name}</div>
-          <div class="pill">${o.platform}</div>
+        <div class="result-top">
+          <div class="result-name">${o.restaurant_name || "Selected restaurant"}</div>
+          <div class="pill">${o.platform || "Platform"}</div>
         </div>
 
         <div class="result-grid">
           <div>
             <div class="label-small">Item</div>
-            <div class="value">${o.drink_name}</div>
+            <div class="value">${o.drink_name || "N/A"}</div>
           </div>
-
           <div>
-            <div class="label-small">Estimated price</div>
-            <div class="value">$${o.total_price}</div>
+            <div class="label-small">Estimated total</div>
+            <div class="value">${o.total_price ? "$" + o.total_price : "N/A"}</div>
           </div>
-
           <div>
             <div class="label-small">ETA</div>
-            <div class="value">${o.eta_minutes} minutes</div>
+            <div class="value">${o.eta_minutes ? o.eta_minutes + " min" : "N/A"}</div>
           </div>
-
           <div>
             <div class="label-small">Address</div>
-            <div class="value">${o.restaurant_address}</div>
+            <div class="value">${o.restaurant_address || "N/A"}</div>
           </div>
         </div>
 
-        <a href="${o.checkout_url}" target="_blank">
-          <button class="btn-primary" style="margin-top: 18px;">Open Checkout</button>
-        </a>
+        <div class="result-actions">
+          ${
+            o.checkout_url
+              ? `<a href="${o.checkout_url}" target="_blank" style="flex:1;">
+                   <button class="btn-primary" style="width:100%; margin-top:8px;">
+                     Review & checkout
+                   </button>
+                 </a>`
+              : ""
+          }
+        </div>
       </div>
     `;
 
-    refreshBtn.disabled = false;
+    runBtn.disabled = false;
+    refreshBtn.disabled = !o.place_id;
   }
 
-  refreshBtn.addEventListener("click", fetchRecommendation); 
+  refreshBtn.addEventListener("click", fetchRecommendation);
 </script>
 
 </body>
