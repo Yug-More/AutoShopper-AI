@@ -4,50 +4,74 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Any, Dict, List
 import time
+import os
 
-# ✅ 1. Import sentry-sdk
+# ✅ Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# ✅ Import Sentry SDK
 import sentry_sdk
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
-# ✅ 2. Initialize Sentry before creating app
+# ✅ Initialize Sentry
 sentry_sdk.init(
     dsn="https://f9c642c0fbed9851a68015038374a11d@o4510370374615040.ingest.us.sentry.io/4510370599862272",
-    traces_sample_rate=1.0,  # capture 100% of performance traces
-    profiles_sample_rate=1.0,  # optional: captures profiling data
+    traces_sample_rate=1.0,
+    profiles_sample_rate=1.0,
 )
+
+# ✅ Daytona integration
+from daytona import Daytona, DaytonaConfig
+
+DAYTONA_API_KEY = os.getenv("DAYTONA_API_KEY")
+daytona = Daytona(DaytonaConfig(api_key=DAYTONA_API_KEY))
 
 from llm_utils import parse_prompt_with_llm, select_place_and_item
 from google_places_client import search_places, place_to_checkout_url
 
+# ✅ FastAPI app setup
 app = FastAPI()
 
-# ✅ 3. Attach Sentry middleware so all routes are monitored
+# ✅ Sentry middleware
 app.add_middleware(SentryAsgiMiddleware)
 
-# ✅ 4. (Optional) add CORS after Sentry
+# ✅ CORS (open for testing/hackathon)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # open for hackathon
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ✅ Request model
 class OrderRequest(BaseModel):
     prompt: str
     location: Optional[str] = None
     allergies: List[str] = []
     dietary_rules: List[str] = []
-    exclude_place_ids: List[str] = []   # 👈 NEW
+    exclude_place_ids: List[str] = []
 
+# ✅ Health check
 @app.get("/health")
 def health() -> Dict[str, bool]:
     return {"ok": True}
 
+# ✅ Debug test for Sentry
 @app.get("/debug-sentry")
 def trigger_error():
     1 / 0
 
+# ✅ Test Daytona route
+@app.get("/run-daytona")
+def run_daytona():
+    sandbox = daytona.create()
+    code = 'print("Hello from Daytona!")'
+    result = sandbox.process.code_run(code)
+    return {"exit_code": result.exit_code, "result": result.result}
+
+# ✅ Main API route
 @app.post("/api/order")
 def create_order(req: OrderRequest) -> Dict[str, Any]:
     try:
@@ -58,6 +82,7 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
 
         location_str = req.location.strip()
 
+        # Step 1: LLM parsing
         constraints = parse_prompt_with_llm(
             req.prompt,
             allergies=req.allergies,
@@ -66,7 +91,7 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
         cuisine = constraints.get("cuisine") or "food"
         max_price = constraints.get("max_price")
 
-        # Map max_price -> Google price_level 0–4 (rough heuristic)
+        # Step 2: Map max_price -> Google price level
         max_price_level = None
         if isinstance(max_price, (int, float)):
             if max_price <= 10:
@@ -78,14 +103,14 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             else:
                 max_price_level = 4
 
-        # 👇 Use BOTH the parsed cuisine and the raw prompt so
-        #    keywords like "chicken" / "wings" stay in the query.
+        # Step 3: Combine cuisine + raw prompt for search
         prompt_text = req.prompt.strip()
         if cuisine and cuisine.lower() != "food":
             search_query = f"{cuisine} {prompt_text}"
         else:
             search_query = prompt_text or cuisine
 
+        # Step 4: Search Google Places
         places = search_places(
             query=search_query,
             location_str=location_str,
@@ -104,7 +129,11 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
         if not places:
             return {"status": "error", "error": "No restaurants found matching your request."}
 
-        # 3) LLM: pick best place + item (with allergies + rules)
+        # Step 5: Run a short Daytona sandbox snippet for debugging/logging
+        sandbox = daytona.create()
+        sandbox.process.code_run(f'print("Processing cuisine: {cuisine}")')
+
+        # Step 6: LLM selection logic
         selection = select_place_and_item(
             req.prompt,
             places,
@@ -137,10 +166,10 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
         return {"status": "ok", "data": data, "timestamp": int(time.time())}
 
     except Exception as e:
-        # ✅ Any unhandled exception automatically gets sent to Sentry
         print("[api/order][error]", e)
-        raise  # re-raise so Sentry can capture it properly
+        raise  # Sentry will capture it automatically
 
+# ✅ Helper: Allergen filtering
 def filter_places_by_allergens(places: List[Dict[str, Any]], allergies: List[str]) -> List[Dict[str, Any]]:
     if not allergies:
         return places
