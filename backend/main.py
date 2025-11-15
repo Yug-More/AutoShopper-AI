@@ -54,8 +54,7 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
 
         location_str = req.location.strip()
 
-        # 1) LLM: understand the prompt
-        constraints = parse_prompt_with_llm(
+                constraints = parse_prompt_with_llm(
             req.prompt,
             allergies=req.allergies,
             dietary_rules=req.dietary_rules,
@@ -75,9 +74,16 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             else:
                 max_price_level = 4
 
-        # ✅ FIX: ensure 'places' is defined before filtering
+        # 👇 Use BOTH the parsed cuisine and the raw prompt so
+        #    keywords like "chicken" / "wings" stay in the query.
+        prompt_text = req.prompt.strip()
+        if cuisine and cuisine.lower() != "food":
+            search_query = f"{cuisine} {prompt_text}"
+        else:
+            search_query = prompt_text or cuisine
+
         places = search_places(
-            query=cuisine,
+            query=search_query,
             location_str=location_str,
             max_price_level=max_price_level,
             limit=12,
