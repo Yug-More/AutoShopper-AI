@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@sentry/node": "^10.25.0",
+    "express": "^5.1.0"
+  }
+}
