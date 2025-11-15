@@ -100,8 +100,13 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
         if not places:
             return {"status": "error", "error": "No restaurants found matching your request."}
 
-        # 3) LLM: pick best place + item
-        selection = select_place_and_item(req.prompt, places)
+        # 3) LLM: pick best place + item (with allergies + rules)
+        selection = select_place_and_item(
+            req.prompt,
+            places,
+            allergies=req.allergies,
+            dietary_rules=req.dietary_rules,
+        )
         idx = selection.get("place_index", 0)
         if not isinstance(idx, int) or idx < 0 or idx >= len(places):
             idx = 0

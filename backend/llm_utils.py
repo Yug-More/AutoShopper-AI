@@ -60,11 +60,21 @@ def parse_prompt_with_llm(prompt: str,
 
 
 # 2) Choose best place + item from Places results
-def select_place_and_item(prompt: str, places: List[Dict[str, Any]]) -> Dict[str, Any]:
+def select_place_and_item(
+    prompt: str,
+    places: List[Dict[str, Any]],
+    allergies: List[str] | None = None,
+    dietary_rules: List[str] | None = None,
+) -> Dict[str, Any]:
     """
     Given the user prompt and a list of Google Places results,
     ask the LLM to choose the best restaurant and suggest a specific dish.
+    The model must strictly respect explicit ingredient requests
+    (e.g., 'chicken') and all allergies/dietary rules.
     """
+    allergies = allergies or []
+    rules = dietary_rules or []
+
     condensed = []
     for i, p in enumerate(places):
         condensed.append({
@@ -78,20 +88,27 @@ def select_place_and_item(prompt: str, places: List[Dict[str, Any]]) -> Dict[str
         })
 
     system_msg = (
-        "You are an AI food-ordering assistant. "
-        "The user describes what they want to eat. "
-        "You are given a JSON list of candidate restaurants from Google Places. "
-        "Choose the single best restaurant and suggest a specific dish or drink "
-        "that matches the user's request.\n\n"
+        "You are an AI food-ordering assistant.\n"
+        "The user describes what they want to eat.\n"
+        "You are given a JSON list of candidate restaurants from Google Places.\n"
+        "You MUST strictly honor the user's explicit request and all allergies/dietary rules:\n"
+        "- If the user clearly asks for a specific main ingredient (e.g. 'chicken'), "
+        "  you should strongly prefer restaurants whose name or types suggest that ingredient.\n"
+        "- Avoid restaurants that are clearly about a different main ingredient "
+        "  (e.g. burger-only places) unless there are no reasonable alternatives.\n"
+        "- Never recommend anything likely to contain the user's allergens or violate "
+        "  their dietary rules.\n\n"
         "Respond ONLY with a JSON object with keys:\n"
         "  place_index (integer, index into the list),\n"
-        "  item_name (string),\n"
+        '  item_name (string; include the requested main ingredient if one was requested),\n'
         "  estimated_total_price (number, in USD)."
     )
 
     user_msg = (
         "User prompt:\n"
         f"{prompt}\n\n"
+        f"User allergies: {allergies}\n"
+        f"User dietary rules: {rules}\n\n"
         "Candidate restaurants (JSON list):\n"
         f"{json.dumps(condensed, ensure_ascii=False)}"
     )
