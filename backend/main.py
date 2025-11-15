@@ -5,15 +5,29 @@ from pydantic import BaseModel
 from typing import Optional, Any, Dict, List
 import time
 
+# ✅ 1. Import sentry-sdk
+import sentry_sdk
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+
+# ✅ 2. Initialize Sentry before creating app
+sentry_sdk.init(
+    dsn="https://f9c642c0fbed9851a68015038374a11d@o4510370374615040.ingest.us.sentry.io/4510370599862272",
+    traces_sample_rate=1.0,  # capture 100% of performance traces
+    profiles_sample_rate=1.0,  # optional: captures profiling data
+)
+
 from llm_utils import parse_prompt_with_llm, select_place_and_item
 from google_places_client import search_places, place_to_checkout_url
 
 app = FastAPI()
 
-# CORS: open for hackathon
+# ✅ 3. Attach Sentry middleware so all routes are monitored
+app.add_middleware(SentryAsgiMiddleware)
+
+# ✅ 4. (Optional) add CORS after Sentry
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],   # open for hackathon
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,14 +75,7 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             else:
                 max_price_level = 4
 
-        exclude_ids = set(req.exclude_place_ids or [])
-        if exclude_ids:
-            filtered = [p for p in places if p.get("place_id") not in exclude_ids]
-            # If everything gets filtered out, fall back to original list
-            if filtered:
-                places = filtered
-
-        # 2) Google Places: search for candidates
+        # ✅ FIX: ensure 'places' is defined before filtering
         places = search_places(
             query=cuisine,
             location_str=location_str,
@@ -76,13 +83,16 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             limit=12,
         )
 
+        exclude_ids = set(req.exclude_place_ids or [])
+        if exclude_ids:
+            filtered = [p for p in places if p.get("place_id") not in exclude_ids]
+            if filtered:
+                places = filtered
+
         places = filter_places_by_allergens(places, req.allergies or [])
 
         if not places:
-            return {
-                "status": "error",
-                "error": "No restaurants found matching your request."
-            }
+            return {"status": "error", "error": "No restaurants found matching your request."}
 
         # 3) LLM: pick best place + item
         selection = select_place_and_item(req.prompt, places)
@@ -105,19 +115,16 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             "total_price": est_price,
             "eta_minutes": 25,
             "restaurant_address": address,
-            "checkout_url": place_to_checkout_url(place_id) if place_id else "",
-            "place_id": place_id,   # 👈 NEW
+            "checkout_url": checkout_url,
+            "place_id": place_id,
         }
 
-        return {
-            "status": "ok",
-            "data": data,
-            "timestamp": int(time.time()),
-        }
+        return {"status": "ok", "data": data, "timestamp": int(time.time())}
 
     except Exception as e:
+        # ✅ Any unhandled exception automatically gets sent to Sentry
         print("[api/order][error]", e)
-        return {"status": "error", "error": "Internal error while planning order."}
+        raise  # re-raise so Sentry can capture it properly
 
 def filter_places_by_allergens(places: List[Dict[str, Any]], allergies: List[str]) -> List[Dict[str, Any]]:
     if not allergies:
@@ -135,6 +142,4 @@ def filter_places_by_allergens(places: List[Dict[str, Any]], allergies: List[str
             continue
         filtered.append(p)
 
-    # If we filtered out everything, fall back to the original list;
-    # better to show something than nothing.
     return filtered or places
