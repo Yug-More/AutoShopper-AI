@@ -3,3 +3,5 @@ uvicorn
 requests
 openai
 sentry_sdk
+python-dotenv
+daytona
