@@ -66,12 +66,14 @@
     }
 
     .brand-logo {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 30% 20%, #FFFFFF, var(--green));
-      box-shadow: 0 0 10px rgba(16,185,129,0.6);
-      animation: logoPulse 2s ease-in-out infinite;
+      height: 36px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      background: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      animation: none !important;
     }
 
     @keyframes logoPulse {
@@ -367,7 +369,7 @@
   <!-- NAVBAR -->
   <header class="navbar">
     <div class="brand">
-      <div class="brand-logo"></div>
+      <img src="images/logo.png" class="brand-logo">
       DELIVRY
     </div>
     <div class="nav-right">
