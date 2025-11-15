@@ -7,108 +7,235 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    body {
+    :root {
+      --green: #10B981;
+      --green-light: #34D399;
+      --green-soft: #ECFDF5;
+      --green-muted: #A7F3D0;
+      --text-dark: #0F172A;
+      --text-light: #64748B;
+      --border: #E2E8F0;
+      --bg-grey: #F8FAFC;
+      --white: #FFFFFF;
+    }
+
+    * {
       margin: 0;
-      font-family: "Inter", sans-serif;
-      background: #f9fafb;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #F9FAFB 0, #FFFFFF 40%, #F1F5F9 100%);
+      color: var(--text-dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      animation: fadeInBody 0.4s ease-out forwards;
+    }
+
+    @keyframes fadeInBody {
+      to { opacity: 1; }
+    }
+
+    /* NAVBAR (same as index) */
+    .navbar {
+      width: 100%;
+      padding: 14px 34px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 20%, #FFFFFF, var(--green));
+      box-shadow: 0 0 10px rgba(16,185,129,0.6);
+      animation: logoPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    .nav-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--bg-grey);
+      border: 1px solid #E5E7EB;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-light);
+    }
+
+    .nav-link {
+      font-size: 13px;
+      color: var(--green);
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
+      background: none;
+      text-decoration: none;
+    }
+
+    .nav-link:hover {
+      text-decoration: underline;
+    }
+
+    /* PAGE LAYOUT */
+    .auth-shell {
+      flex: 1;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      padding: 24px;
+      padding: 32px 20px 40px;
     }
 
-    .card {
+    .auth-card {
       width: 100%;
-      max-width: 430px;
-      background: #ffffff;
-      padding: 34px 30px;
+      max-width: 520px;
+      background: var(--white);
       border-radius: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.06);
-      animation: fadeUp .5s ease-out;
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 32px rgba(148,163,184,0.2);
+      padding: 26px 26px 24px;
+      position: relative;
+      overflow: hidden;
+      animation: slideUpCard 0.35s ease-out;
     }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .auth-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at top left, rgba(52,211,153,0.18), transparent 55%);
+      opacity: 0.8;
     }
 
-    .logo {
-      width: 32px;
-      height: 32px;
+    .auth-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes slideUpCard {
+      from { opacity: 0; transform: translateY(10px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .logo-orb {
+      width: 34px;
+      height: 34px;
       border-radius: 999px;
-      background: #10B981;
-      margin-bottom: 12px;
+      background: radial-gradient(circle at 30% 20%, #FFFFFF, var(--green));
+      box-shadow: 0 0 18px rgba(16,185,129,0.7);
+      margin-bottom: 16px;
+      animation: logoPulse 2.1s ease-in-out infinite;
     }
 
     .title {
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 800;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     .subtitle {
-      color: #6b7280;
-      margin-bottom: 24px;
+      color: var(--text-light);
+      margin-bottom: 16px;
       font-size: 14px;
+      max-width: 420px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .pill-soft {
+      font-size: 11px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--green-muted);
+      background: var(--green-soft);
+      color: #047857;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      font-weight: 600;
     }
 
     label {
       font-size: 13px;
       font-weight: 600;
       color: #374151;
-      margin-top: 12px;
+      margin-top: 10px;
       margin-bottom: 6px;
       display: block;
     }
 
-    input, textarea {
+    .input-field, textarea {
       width: 100%;
-      padding: 12px 14px;
+      padding: 11px 13px;
       border-radius: 12px;
-      border: 1px solid #d1d5db;
+      border: 1px solid var(--border);
       font-size: 14px;
       outline: none;
-      background: #ffffff;
+      background: var(--bg-grey);
       transition: all .15s ease;
     }
 
-    input:focus, textarea:focus {
-      border-color: #10B981;
-      box-shadow: 0 0 0 2px rgba(16,185,129,0.25);
+    .input-field:focus, textarea:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(16,185,129,0.16);
+      background: var(--white);
     }
 
-    .btn {
-      margin-top: 22px;
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 12px;
-      background: #10B981;
-      color: #ffffff;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all .15s ease;
-      box-shadow: 0 6px 18px rgba(16,185,129,.35);
+    textarea {
+      resize: vertical;
+      min-height: 68px;
     }
 
-    .btn:hover {
-      background: #0EA66B;
-      transform: translateY(-1px);
+    .chips-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
     }
 
-    .link {
-      text-align: center;
-      margin-top: 14px;
-      font-size: 14px;
-      color: #065F46;
-    }
-
-    .link a {
-      color: #059669;
-      text-decoration: none;
-      font-weight: 600;
+    .chips-hint {
+      font-size: 12px;
+      color: var(--text-light);
     }
 
     .chip-box {
@@ -116,89 +243,253 @@
       flex-wrap: wrap;
       gap: 8px;
       margin-top: 6px;
+      margin-bottom: 6px;
     }
 
     .chip {
-      padding: 7px 12px;
+      padding: 7px 11px;
       background: #F3F4F6;
-      border-radius: 20px;
-      font-size: 13px;
+      border-radius: 999px;
+      font-size: 12px;
       cursor: pointer;
       border: 1px solid #E5E7EB;
+      color: #374151;
       transition: all .15s ease;
+      user-select: none;
+    }
+
+    .chip:hover {
+      background: #E5E7EB;
     }
 
     .chip.selected {
-      background: #10B981;
-      color: white;
-      border-color: #10B981;
+      background: var(--green);
+      color: #FFFFFF;
+      border-color: var(--green);
+      box-shadow: 0 0 0 1px rgba(16,185,129,0.5);
+      transform: translateY(-0.5px);
+    }
+
+    .helper-text {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 3px;
+    }
+
+    .btn-primary {
+      margin-top: 20px;
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--green), var(--green-light));
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s ease;
+      box-shadow: 0 10px 26px rgba(16,185,129,.45);
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 32px rgba(16,185,129,0.55);
+      filter: brightness(1.02);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.7;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .btn-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 2px solid #FFFFFF;
+      background: rgba(16,185,129,0.85);
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 13px;
+      color: #6B7280;
+    }
+
+    .footer a {
+      color: var(--green);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    .error-msg {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #B91C1C;
+      background: #FEE2E2;
+      border-radius: 10px;
+      padding: 9px 10px;
+      border: 1px solid #FCA5A5;
+    }
+
+    .success-msg {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #166534;
+      background: #DCFCE7;
+      border-radius: 10px;
+      padding: 9px 10px;
+      border: 1px solid #86EFAC;
+    }
+
+    @media (max-width: 600px) {
+      .navbar {
+        padding: 12px 16px;
+      }
+      .auth-card {
+        padding: 22px 18px 20px;
+      }
     }
   </style>
 </head>
 
 <body>
-  <div class="card">
-    <div class="logo"></div>
-    <div class="title">Create your profile</div>
-    <div class="subtitle">Your allergies and dietary rules help us filter unsafe items.</div>
-
-    <label>Name</label>
-    <input id="name" placeholder="Your name" />
-
-    <label>Email</label>
-    <input id="email" placeholder="you@example.com" />
-
-    <label>Password</label>
-    <input id="password" type="password" placeholder="••••••••" />
-
-    <label>Allergies</label>
-    <div class="chip-box" id="allergyChips">
-      <div class="chip" data-val="dairy">Dairy</div>
-      <div class="chip" data-val="nuts">Nuts</div>
-      <div class="chip" data-val="eggs">Eggs</div>
-      <div class="chip" data-val="gluten">Gluten</div>
-      <div class="chip" data-val="soy">Soy</div>
-      <div class="chip" data-val="shellfish">Shellfish</div>
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-logo"></div>
+      DELIVRY
     </div>
-
-    <label>Other restrictions</label>
-    <textarea id="rules" rows="2" placeholder="Example: halal, low sugar, vegetarian"></textarea>
-
-    <button class="btn" onclick="signup()">Create account</button>
-
-    <div class="link">
-      Already have an account? <a href="login.html">Log in</a>
+    <div class="nav-right">
+      <div class="nav-pill">Setup • Under 60 seconds</div>
+      <a href="login.html" class="nav-link">Log in</a>
     </div>
-  </div>
+  </header>
 
-<script>
-document.querySelectorAll(".chip").forEach(c => {
-  c.addEventListener("click", () => c.classList.toggle("selected"));
-});
+  <!-- SIGNUP CARD -->
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="logo-orb"></div>
+      <div class="title">Create your profile</div>
+      <div class="subtitle">
+        We use this profile locally to filter out unsafe or unwanted items  
+        before the agent builds your cart.
+      </div>
 
-function signup() {
-  const name = document.getElementById("name").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const rulesRaw = document.getElementById("rules").value.trim();
+      <div class="pill-row">
+        <div class="pill-soft">Allergy-aware</div>
+        <div class="pill-soft">No payment processed</div>
+        <div class="pill-soft">Local-only profile</div>
+      </div>
 
-  if (!name || !email || !password) {
-    alert("Please fill all fields.");
-    return;
-  }
+      <label for="name">Name</label>
+      <input id="name" class="input-field" placeholder="Your name" />
 
-  const allergies = [...document.querySelectorAll(".chip.selected")]
-    .map(c => c.dataset.val);
+      <label for="email">Email</label>
+      <input id="email" class="input-field" placeholder="you@example.com" />
 
-  const customRestrictions = rulesRaw
-    ? rulesRaw.split(",").map(r => r.trim())
-    : [];
+      <label for="password">Password</label>
+      <input id="password" class="input-field" type="password" placeholder="••••••••" />
 
-  const user = { name, email, password, allergies, customRestrictions };
+      <div class="chips-label-row">
+        <label>Common allergies</label>
+        <div class="chips-hint">Tap to select. We’ll avoid these automatically.</div>
+      </div>
+      <div class="chip-box" id="allergyChips">
+        <div class="chip" data-val="dairy">Dairy</div>
+        <div class="chip" data-val="nuts">Nuts</div>
+        <div class="chip" data-val="eggs">Eggs</div>
+        <div class="chip" data-val="gluten">Gluten</div>
+        <div class="chip" data-val="soy">Soy</div>
+        <div class="chip" data-val="shellfish">Shellfish</div>
+      </div>
 
-  localStorage.setItem("delivry_user", JSON.stringify(user));
-  window.location.href = "login.html";
-}
-</script>
+      <label for="rules">Other dietary rules</label>
+      <textarea id="rules" placeholder="Example: halal, low sugar, vegetarian, no added syrups"></textarea>
+      <div class="helper-text">
+        Add any extra restrictions or preferences. Separate with commas.
+      </div>
+
+      <button class="btn-primary" id="signupBtn" onclick="signup()">
+        <span class="btn-icon"></span>
+        <span>Create profile</span>
+      </button>
+
+      <div id="error" class="error-msg" style="display:none;"></div>
+      <div id="success" class="success-msg" style="display:none;"></div>
+
+      <div class="footer">
+        Already have an account? <a href="login.html">Log in</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Toggle chips
+    document.querySelectorAll(".chip").forEach(c => {
+      c.addEventListener("click", () => c.classList.toggle("selected"));
+    });
+
+    function showError(msg) {
+      const e = document.getElementById("error");
+      e.textContent = msg;
+      e.style.display = "block";
+      document.getElementById("success").style.display = "none";
+    }
+
+    function showSuccess(msg) {
+      const s = document.getElementById("success");
+      s.textContent = msg;
+      s.style.display = "block";
+      document.getElementById("error").style.display = "none";
+    }
+
+    function signup() {
+      const btn = document.getElementById("signupBtn");
+      btn.disabled = true;
+
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const rulesRaw = document.getElementById("rules").value.trim();
+
+      if (!name || !email || !password) {
+        showError("Please fill out name, email, and password to continue.");
+        btn.disabled = false;
+        return;
+      }
+
+      const allergies = Array.from(document.querySelectorAll(".chip.selected"))
+        .map(c => c.dataset.val);
+
+      const customRestrictions = rulesRaw
+        ? rulesRaw.split(",").map(r => r.trim()).filter(Boolean)
+        : [];
+
+      const user = { name, email, password, allergies, customRestrictions };
+
+      try {
+        localStorage.setItem("delivry_user", JSON.stringify(user));
+        showSuccess("Profile created. Redirecting you to your dashboard…");
+        setTimeout(() => {
+          window.location.href = "dashboard.html";
+        }, 900);
+      } catch (e) {
+        console.error(e);
+        showError("We couldn't save your profile in this browser.");
+        btn.disabled = false;
+      }
+    }
+  </script>
 </body>
 </html>

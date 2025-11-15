@@ -30,10 +30,6 @@
       background: radial-gradient(circle at top, #F9FAFB 0, #FFFFFF 40%, #F1F5F9 100%);
       color: var(--text-dark);
       min-height: 100vh;
-    }
-
-    /* Simple fade-in for page */
-    body {
       opacity: 0;
       animation: fadeInBody 0.4s ease-out forwards;
     }
@@ -648,13 +644,13 @@
   if (!stored) {
     window.location.href = "signup.html";
   }
-  const user = JSON.parse(stored);
+  const user = stored ? JSON.parse(stored) : null;
 
   const profileStrip = document.getElementById("profileStrip");
   const profileDetails = document.getElementById("profileDetails");
 
-  const allergies = user.allergies || [];
-  const rules = user.customRestrictions || [];
+  const allergies = user?.allergies || [];
+  const rules = user?.customRestrictions || [];
 
   profileStrip.innerHTML = `
     <div>
