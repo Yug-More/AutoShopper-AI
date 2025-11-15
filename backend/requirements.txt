@@ -2,4 +2,4 @@ fastapi
 uvicorn
 requests
 openai
-sentry
+sentry_sdk
