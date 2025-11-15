@@ -12,19 +12,29 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # 1) Prompt -> constraints
-def parse_prompt_with_llm(prompt: str) -> Dict[str, Any]:
+def parse_prompt_with_llm(prompt: str,
+                          allergies: List[str] | None = None,
+                          dietary_rules: List[str] | None = None) -> Dict[str, Any]:
     """
     Use an LLM to extract structured ordering constraints from the user prompt.
     """
+    allergies = allergies or []
+    rules = dietary_rules or []
+
     system_msg = (
-        "You extract structured food-order constraints from a user prompt. "
+        "You extract structured food-order constraints from a user prompt.\n"
+        "Always assume the user has allergies and dietary rules that must be respected.\n"
+        "Never suggest anything likely to contain those allergens.\n"
         "Return ONLY a JSON object with keys:\n"
-        "cuisine (string or null),\n"
-        "max_price (number or null, in USD),\n"
-        "max_distance_km (number or null),\n"
-        "spice_level (string or null),\n"
-        "dietary (array of strings)."
+        "  cuisine (string or null),\n"
+        "  max_price (number or null, in USD),\n"
+        "  max_distance_km (number or null),\n"
+        "  spice_level (string or null),\n"
+        "  dietary (array of strings).\n"
+        f"User allergies: {allergies}\n"
+        f"User dietary rules: {rules}\n"
     )
+
 
     resp = client.chat.completions.create(
         model="gpt-4.1-mini",  # or another cheap model you have

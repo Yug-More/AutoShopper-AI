@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 import time
 
 from llm_utils import parse_prompt_with_llm, select_place_and_item
@@ -21,7 +21,10 @@ app.add_middleware(
 
 class OrderRequest(BaseModel):
     prompt: str
-    location: Optional[str] = None  # e.g. "San Jose, CA"
+    location: Optional[str] = None
+    allergies: List[str] = []
+    dietary_rules: List[str] = []
+    exclude_place_ids: List[str] = []   # 👈 NEW
 
 @app.get("/health")
 def health() -> Dict[str, bool]:
@@ -32,11 +35,17 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
     try:
         print(f"[api/order] prompt={req.prompt!r}, location={req.location!r}")
 
-        if not req.location:
-            return {"status": "error", "error": "Location is required."}
+        if not req.location or not req.location.strip():
+            return {"status": "error", "error": "Please enter a location (city, address, or ZIP)."}
+
+        location_str = req.location.strip()
 
         # 1) LLM: understand the prompt
-        constraints = parse_prompt_with_llm(req.prompt)
+        constraints = parse_prompt_with_llm(
+            req.prompt,
+            allergies=req.allergies,
+            dietary_rules=req.dietary_rules,
+        )
         cuisine = constraints.get("cuisine") or "food"
         max_price = constraints.get("max_price")
 
@@ -52,13 +61,22 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             else:
                 max_price_level = 4
 
+        exclude_ids = set(req.exclude_place_ids or [])
+        if exclude_ids:
+            filtered = [p for p in places if p.get("place_id") not in exclude_ids]
+            # If everything gets filtered out, fall back to original list
+            if filtered:
+                places = filtered
+
         # 2) Google Places: search for candidates
         places = search_places(
             query=cuisine,
-            location_str=req.location,
+            location_str=location_str,
             max_price_level=max_price_level,
-            limit=5,
+            limit=12,
         )
+
+        places = filter_places_by_allergens(places, req.allergies or [])
 
         if not places:
             return {
@@ -80,15 +98,15 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
         place_id = chosen.get("place_id")
         checkout_url = place_to_checkout_url(place_id) if place_id else ""
 
-        # Response shape that matches your current frontend
         data = {
             "platform": "Google Maps",
             "restaurant_name": chosen.get("name", "Unknown restaurant"),
             "drink_name": item_name,
             "total_price": est_price,
-            "eta_minutes": 25,  # still fake for now
+            "eta_minutes": 25,
             "restaurant_address": address,
-            "checkout_url": checkout_url,
+            "checkout_url": place_to_checkout_url(place_id) if place_id else "",
+            "place_id": place_id,   # 👈 NEW
         }
 
         return {
@@ -100,3 +118,23 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
     except Exception as e:
         print("[api/order][error]", e)
         return {"status": "error", "error": "Internal error while planning order."}
+
+def filter_places_by_allergens(places: List[Dict[str, Any]], allergies: List[str]) -> List[Dict[str, Any]]:
+    if not allergies:
+        return places
+
+    bad = [a.lower() for a in allergies]
+    filtered = []
+    for p in places:
+        text = " ".join([
+            p.get("name", ""),
+            p.get("formatted_address", ""),
+            " ".join(p.get("types", []) or []),
+        ]).lower()
+        if any(word in text for word in bad):
+            continue
+        filtered.append(p)
+
+    # If we filtered out everything, fall back to the original list;
+    # better to show something than nothing.
+    return filtered or places
