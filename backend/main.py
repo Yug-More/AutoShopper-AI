@@ -54,7 +54,7 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
 
         location_str = req.location.strip()
 
-                constraints = parse_prompt_with_llm(
+        constraints = parse_prompt_with_llm(
             req.prompt,
             allergies=req.allergies,
             dietary_rules=req.dietary_rules,
