@@ -44,6 +44,10 @@ class OrderRequest(BaseModel):
 def health() -> Dict[str, bool]:
     return {"ok": True}
 
+@app.get("/debug-sentry")
+def trigger_error():
+    1 / 0
+
 @app.post("/api/order")
 def create_order(req: OrderRequest) -> Dict[str, Any]:
     try:
