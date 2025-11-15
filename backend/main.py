@@ -291,9 +291,16 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
 
         # Step 5: Run a short Daytona sandbox snippet for debugging/logging
         sandbox = daytona.create()
-        sandbox.process.code_run(f'print("Processing cuisine: {cuisine}")')
+        sandbox.process.code_run(
+            f'''
+            print("Daytona run - processing order")
+            print("Cuisine:", {repr(cuisine)})
+            print("Allergies:", {repr(req.allergies)})
+            print("Num candidate places:", {len(places)})
+            '''
+        )
 
-                # Step 6: LLM selection logic (strict allergy-aware)
+        # Step 6: LLM selection logic (strict allergy-aware)
         selection = select_place_and_item(
             req.prompt,
             places,
@@ -327,6 +334,16 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             }
 
         chosen = places[idx]
+
+        # Daytona: validate that the chosen item doesn't obviously contain an allergen
+        validation_code = f"""
+                            allergies = {[a.lower() for a in (req.allergies or [])]}
+                            item = {item_name!r}.lower()
+                            unsafe = [a for a in allergies if a in item]
+                            print("unsafe_matches", unsafe)
+                            """
+        validation_result = sandbox.process.code_run(validation_code)
+        print("[daytona][validation]", validation_result.result)
 
         # Fallback if the model didn't give a price
         if est_price is None:
