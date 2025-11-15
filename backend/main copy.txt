@@ -290,11 +290,15 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             return {"status": "error", "error": "No restaurants found matching your request."}
 
         # Step 5: Run a short Daytona sandbox snippet for debugging/logging
-        try:
-            sandbox = daytona.create()
-            sandbox.process.code_run("print('Daytona check OK')")
-        except Exception as e:
-            print("[daytona] skipped, quota reached:", e)
+        sandbox = daytona.create()
+        sandbox.process.code_run(
+            f'''
+            print("Daytona run - processing order")
+            print("Cuisine:", {repr(cuisine)})
+            print("Allergies:", {repr(req.allergies)})
+            print("Num candidate places:", {len(places)})
+            '''
+        )
 
         # Step 6: LLM selection logic (strict allergy-aware)
         selection = select_place_and_item(
