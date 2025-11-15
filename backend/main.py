@@ -408,4 +408,4 @@ def filter_places_by_allergens(places: List[Dict[str, Any]], allergies: List[str
 
     # If filtering nukes everything, fall back to original places;
     # the LLM will still be allergy-aware.
-    return filtered or places
+    return filtered or places #NEWWW
