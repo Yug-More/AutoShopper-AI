@@ -6,30 +6,50 @@ from typing import Optional, Any, Dict, List
 import time
 import os
 
-# ✅ Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
 
-# ✅ Import Sentry SDK
+# -----------------------------
+# Sentry
+# -----------------------------
 import sentry_sdk
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
-# ✅ Initialize Sentry
 sentry_sdk.init(
     dsn="https://f9c642c0fbed9851a68015038374a11d@o4510370374615040.ingest.us.sentry.io/4510370599862272",
     traces_sample_rate=1.0,
     profiles_sample_rate=1.0,
 )
 
-# ✅ Daytona integration
+# -----------------------------
+# Daytona (optional)
+# -----------------------------
 from daytona import Daytona, DaytonaConfig
 
 DAYTONA_API_KEY = os.getenv("DAYTONA_API_KEY")
-daytona = Daytona(DaytonaConfig(api_key=DAYTONA_API_KEY))
+DAYTONA_ENABLED = bool(DAYTONA_API_KEY)
 
-from llm_utils import parse_prompt_with_llm, select_place_and_item
+daytona = None
+if DAYTONA_ENABLED:
+    try:
+        daytona = Daytona(DaytonaConfig(api_key=DAYTONA_API_KEY))
+    except Exception as e:
+        print("[daytona] init failed, disabling:", e)
+        daytona = None
+
+# -----------------------------
+# Local imports
+# -----------------------------
+from llm_utils import (
+    parse_prompt_with_llm,
+    select_place_and_item,
+    select_batch_order,
+)
 from google_places_client import search_places, place_to_checkout_url
 
+# -----------------------------
+# Allergen synonyms
+# -----------------------------
 ALLERGEN_SYNONYMS = {
     "dairy": [
         "dairy", "milk", "cheese", "butter", "cream", "yogurt", "ice cream",
@@ -62,26 +82,28 @@ ALLERGEN_SYNONYMS = {
     ],
     "shellfish": [
         "shellfish", "shrimp", "prawn", "prawns", "crab", "lobster",
-        "scallop", "scallops", "oyster", "oysters", "clam", "clams", "mussel", "mussels"
+        "scallop", "scallops", "oyster", "oysters", "clam", "clams",
+        "mussel", "mussels"
     ],
 }
 
-# ✅ FastAPI app setup
+# -----------------------------
+# FastAPI setup
+# -----------------------------
 app = FastAPI()
-
-# ✅ Sentry middleware
 app.add_middleware(SentryAsgiMiddleware)
 
-# ✅ CORS (open for testing/hackathon)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # hackathon/demo
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Request model
+# -----------------------------
+# Request models
+# -----------------------------
 class OrderRequest(BaseModel):
     prompt: str
     location: Optional[str] = None
@@ -92,30 +114,93 @@ class OrderRequest(BaseModel):
 class BatchOrderRequest(OrderRequest):
     num_restaurants: int = 3  # how many different restaurants to include in the batch
 
-# ✅ Health check
+
+# -----------------------------
+# Utility
+# -----------------------------
+def filter_places_by_allergens(
+    places: List[Dict[str, Any]],
+    allergies: List[str],
+) -> List[Dict[str, Any]]:
+    """
+    Coarse restaurant-level filter:
+    - If the restaurant name/address/types clearly mention an allergen OR a common
+      component/synonym (e.g. cheese/butter for dairy, shrimp for shellfish),
+      we drop that place.
+    - If all places get dropped, we fall back to the original list so we don't
+      leave the user stranded; the LLM layer will still try to avoid unsafe items.
+    """
+    if not allergies:
+        return places
+
+    bad_terms: List[str] = []
+    for a in allergies:
+        base = a.lower().strip()
+        bad_terms.append(base)
+        if base in ALLERGEN_SYNONYMS:
+            bad_terms.extend(ALLERGEN_SYNONYMS[base])
+
+    bad_terms = list({t.strip() for t in bad_terms if t.strip()})
+
+    filtered: List[Dict[str, Any]] = []
+    for p in places:
+        text = " ".join([
+            p.get("name", ""),
+            p.get("formatted_address", ""),
+            " ".join(p.get("types", []) or []),
+        ]).lower()
+
+        if any(term in text for term in bad_terms):
+            continue
+        filtered.append(p)
+
+    return filtered or places
+
+
+# -----------------------------
+# Basic routes
+# -----------------------------
 @app.get("/health")
 def health() -> Dict[str, bool]:
     return {"ok": True}
 
-# ✅ Debug test for Sentry
 @app.get("/debug-sentry")
 def trigger_error():
     1 / 0
 
-from llm_utils import parse_prompt_with_llm, select_place_and_item, select_batch_order
-# (make sure select_batch_order is imported)
+@app.get("/run-daytona")
+def run_daytona():
+    if daytona is None:
+        return {"error": "Daytona not configured or API key missing."}
+    try:
+        sandbox = daytona.create()
+        result = sandbox.process.code_run('print("Hello from Daytona!")')
+        return {"exit_code": result.exit_code, "result": result.result}
+    except Exception as e:
+        print("[daytona] /run-daytona failed:", e)
+        return {"error": "Daytona sandbox could not be created (quota or config)."}
 
+
+# -----------------------------
+# Batch order route
+# -----------------------------
 @app.post("/api/batch_order")
 def create_batch_order(req: BatchOrderRequest) -> Dict[str, Any]:
     try:
-        print(f"[api/batch_order] prompt={req.prompt!r}, location={req.location!r}, num_restaurants={req.num_restaurants}")
+        print(
+            f"[api/batch_order] prompt={req.prompt!r}, "
+            f"location={req.location!r}, num_restaurants={req.num_restaurants}"
+        )
 
         if not req.location or not req.location.strip():
-            return {"status": "error", "error": "Please enter a location (city, address, or ZIP)."}
+            return {
+                "status": "error",
+                "error": "Please enter a location (city, address, or ZIP).",
+            }
 
         location_str = req.location.strip()
 
-        # 1) Understand prompt (reuse your existing constraints logic)
+        # 1) Understand prompt
         constraints = parse_prompt_with_llm(
             req.prompt,
             allergies=req.allergies,
@@ -124,6 +209,7 @@ def create_batch_order(req: BatchOrderRequest) -> Dict[str, Any]:
         cuisine = constraints.get("cuisine") or "food"
         max_price = constraints.get("max_price")
 
+        # Map max_price -> Google price_level
         max_price_level = None
         if isinstance(max_price, (int, float)):
             if max_price <= 10:
@@ -135,37 +221,40 @@ def create_batch_order(req: BatchOrderRequest) -> Dict[str, Any]:
             else:
                 max_price_level = 4
 
-        # Use combined cuisine + raw prompt to keep hard keywords
+        # Build search query
         prompt_text = req.prompt.strip()
         if cuisine and cuisine.lower() != "food":
             search_query = f"{cuisine} {prompt_text}"
         else:
             search_query = prompt_text or cuisine
 
+        # 2) Search Google Places
         places = search_places(
             query=search_query,
             location_str=location_str,
             max_price_level=max_price_level,
-            limit=25,  # slightly higher for batch
+            limit=25,
         )
 
         if not places:
             return {"status": "error", "error": "No restaurants found for this request."}
 
-        # Exclude any place_ids (if ever used with refresh later)
+        # Exclude places by ID (refresh workflow)
         exclude_ids = set(req.exclude_place_ids or [])
         if exclude_ids:
             filtered = [p for p in places if p.get("place_id") not in exclude_ids]
             if filtered:
                 places = filtered
 
-        # Apply allergen filter using your existing helper
+        # Allergen filter
         places = filter_places_by_allergens(places, req.allergies or [])
-
         if not places:
-            return {"status": "error", "error": "No restaurants safe for this group based on allergies."}
+            return {
+                "status": "error",
+                "error": "No restaurants safe for this group based on allergies.",
+            }
 
-        # 2) Ask LLM to plan batch across multiple restaurants
+        # 3) LLM batch planning
         plan = select_batch_order(
             req.prompt,
             places,
@@ -176,17 +265,20 @@ def create_batch_order(req: BatchOrderRequest) -> Dict[str, Any]:
 
         selections = plan.get("selections", [])
         if not isinstance(selections, list) or not selections:
-            return {"status": "error", "error": "The planner could not build a batch order."}
+            return {
+                "status": "error",
+                "error": "The planner could not build a batch order.",
+            }
 
-        restaurant_cards = []
-        used_indices = set()
+        restaurant_cards: List[Dict[str, Any]] = []
+        used_indices: set[int] = set()
 
         for sel in selections:
             idx = sel.get("place_index")
             if not isinstance(idx, int) or idx < 0 or idx >= len(places):
                 continue
             if idx in used_indices:
-                continue  # avoid duplicates
+                continue
             used_indices.add(idx)
 
             chosen = places[idx]
@@ -202,20 +294,21 @@ def create_batch_order(req: BatchOrderRequest) -> Dict[str, Any]:
                 "restaurant_name": chosen.get("name", "Unknown restaurant"),
                 "drink_name": item_name,
                 "total_price": est_price,
-                "eta_minutes": 35,  # you can tweak for group orders
+                "eta_minutes": 35,
                 "restaurant_address": address,
                 "checkout_url": checkout_url,
                 "place_id": place_id,
             })
 
         if not restaurant_cards:
-            return {"status": "error", "error": "No valid restaurant selections for the batch."}
+            return {
+                "status": "error",
+                "error": "No valid restaurant selections for the batch.",
+            }
 
         return {
             "status": "ok",
-            "data": {
-                "restaurants": restaurant_cards,
-            },
+            "data": {"restaurants": restaurant_cards},
             "timestamp": int(time.time()),
         }
 
@@ -223,26 +316,24 @@ def create_batch_order(req: BatchOrderRequest) -> Dict[str, Any]:
         print("[api/batch_order][error]", e)
         raise
 
-# ✅ Test Daytona route
-@app.get("/run-daytona")
-def run_daytona():
-    sandbox = daytona.create()
-    code = 'print("Hello from Daytona!")'
-    result = sandbox.process.code_run(code)
-    return {"exit_code": result.exit_code, "result": result.result}
 
-# ✅ Main API route
+# -----------------------------
+# Single order route
+# -----------------------------
 @app.post("/api/order")
 def create_order(req: OrderRequest) -> Dict[str, Any]:
     try:
         print(f"[api/order] prompt={req.prompt!r}, location={req.location!r}")
 
         if not req.location or not req.location.strip():
-            return {"status": "error", "error": "Please enter a location (city, address, or ZIP)."}
+            return {
+                "status": "error",
+                "error": "Please enter a location (city, address, or ZIP).",
+            }
 
         location_str = req.location.strip()
 
-        # Step 1: LLM parsing
+        # 1) Parse constraints
         constraints = parse_prompt_with_llm(
             req.prompt,
             allergies=req.allergies,
@@ -251,7 +342,7 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
         cuisine = constraints.get("cuisine") or "food"
         max_price = constraints.get("max_price")
 
-        # Step 2: Map max_price -> Google price level
+        # 2) Map max_price -> Google price level
         max_price_level = None
         if isinstance(max_price, (int, float)):
             if max_price <= 10:
@@ -263,14 +354,14 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             else:
                 max_price_level = 4
 
-        # Step 3: Combine cuisine + raw prompt for search
+        # 3) Build search query
         prompt_text = req.prompt.strip()
         if cuisine and cuisine.lower() != "food":
             search_query = f"{cuisine} {prompt_text}"
         else:
             search_query = prompt_text or cuisine
 
-        # Step 4: Search Google Places
+        # 4) Search Google Places
         places = search_places(
             query=search_query,
             location_str=location_str,
@@ -285,18 +376,23 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
                 places = filtered
 
         places = filter_places_by_allergens(places, req.allergies or [])
-
         if not places:
-            return {"status": "error", "error": "No restaurants found matching your request."}
+            return {
+                "status": "error",
+                "error": "No restaurants found matching your request.",
+            }
 
-        # Step 5: Run a short Daytona sandbox snippet for debugging/logging
-        try:
-            sandbox = daytona.create()
-            sandbox.process.code_run("print('Daytona check OK')")
-        except Exception as e:
-            print("[daytona] skipped, quota reached:", e)
+        # 5) Daytona (optional) – log + validate recommendation
+        sandbox = None
+        if daytona is not None:
+            try:
+                sandbox = daytona.create()
+                sandbox.process.code_run("print('Daytona check OK')")
+            except Exception as e:
+                print("[daytona] skipped (create failed / quota):", e)
+                sandbox = None
 
-        # Step 6: LLM selection logic (strict allergy-aware)
+        # 6) LLM selection logic (strict allergy-aware)
         selection = select_place_and_item(
             req.prompt,
             places,
@@ -309,9 +405,6 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
         item_name = selection.get("item_name")
         est_price = selection.get("estimated_total_price")
 
-        # If the LLM explicitly says there is no safe option,
-        # or it gives an invalid index / missing item_name,
-        # return an error instead of a fake "N/A" recommendation.
         if (
             no_safe
             or idx is None
@@ -323,7 +416,7 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
             return {
                 "status": "error",
                 "error": (
-                    "We couldn't confidently find a safe recommendation that matches your "
+                    "We couldn't confidently find any other safe recommendations that match your "
                     "allergies and request near this location. "
                     "You may want to broaden your search or double-check directly with a restaurant."
                 ),
@@ -331,15 +424,19 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
 
         chosen = places[idx]
 
-        # Daytona: validate that the chosen item doesn't obviously contain an allergen
-        validation_code = f"""
-                            allergies = {[a.lower() for a in (req.allergies or [])]}
-                            item = {item_name!r}.lower()
-                            unsafe = [a for a in allergies if a in item]
-                            print("unsafe_matches", unsafe)
-                            """
-        validation_result = sandbox.process.code_run(validation_code)
-        print("[daytona][validation]", validation_result.result)
+        # Optional Daytona validation
+        if sandbox is not None:
+            try:
+                validation_code = f"""
+allergies = {[a.lower() for a in (req.allergies or [])]}
+item = {item_name!r}.lower()
+unsafe = [a for a in allergies if a in item]
+print("unsafe_matches", unsafe)
+"""
+                validation_result = sandbox.process.code_run(validation_code)
+                print("[daytona][validation]", (validation_result.result or "").strip())
+            except Exception as e:
+                print("[daytona] validation skipped:", e)
 
         # Fallback if the model didn't give a price
         if est_price is None:
@@ -364,44 +461,4 @@ def create_order(req: OrderRequest) -> Dict[str, Any]:
 
     except Exception as e:
         print("[api/order][error]", e)
-        raise  # Sentry will capture it automatically
-
-# ✅ Helper: Allergen filtering
-def filter_places_by_allergens(places: List[Dict[str, Any]], allergies: List[str]) -> List[Dict[str, Any]]:
-    """
-    Coarse restaurant-level filter:
-    - If the restaurant name/address/types clearly mention an allergen OR a common
-      component/synonym (e.g. cheese/butter for dairy, shrimp for shellfish),
-      we drop that place.
-    - If all places get dropped, we fall back to the original list so we don't
-      leave the user stranded; the LLM layer will still try to avoid unsafe items.
-    """
-    if not allergies:
-        return places
-
-    # Build a set of lowercase keywords to avoid
-    bad_terms: List[str] = []
-    for a in allergies:
-        base = a.lower().strip()
-        bad_terms.append(base)
-        if base in ALLERGEN_SYNONYMS:
-            bad_terms.extend(ALLERGEN_SYNONYMS[base])
-
-    bad_terms = list({t.strip() for t in bad_terms if t.strip()})
-
-    filtered: List[Dict[str, Any]] = []
-    for p in places:
-        text = " ".join([
-            p.get("name", ""),
-            p.get("formatted_address", ""),
-            " ".join(p.get("types", []) or []),
-        ]).lower()
-
-        # If any allergen or its components show up in the restaurant signals, skip it
-        if any(term in text for term in bad_terms):
-            continue
-        filtered.append(p)
-
-    # If filtering nukes everything, fall back to original places;
-    # the LLM will still be allergy-aware.
-    return filtered or places #NEWWW
+        raise
